@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<application xmlns="http://ns.adobe.com/air/application/1.5">
+  <filename>TimeCard</filename>
+  <copyright>David Furber</copyright>
+  <description>A time entry and todo list application for basecamp</description>
+  <customUpdateUI>false</customUpdateUI>
+  <name>TimeCard</name>
+  <id>name.davidfurber.timecard</id>
+  <version>1.054</version>
+  <initialWindow>
+    <content>index.html</content>
+    <height>600</height>
+    <width>800</width>
+    <systemChrome>standard</systemChrome>
+    <transparent>false</transparent>
+    <visible>true</visible>
+  </initialWindow>
+</application>
