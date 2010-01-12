@@ -13,7 +13,7 @@
   <script src="js/jquery.blockUI.js" type="text/javascript"></script>
   <script src="js/jquery.countdown.js" type="text/javascript"></script>
   <script src="js/jquery-ui-1.7.2.custom.js" type="text/javascript"></script>
-  
+
   <script src="js/application.js" type="text/javascript"></script>
   <script src="js/app.cache.js" type="text/javascript"></script>
   <script src="js/app.date.js" type="text/javascript"></script>
@@ -34,7 +34,7 @@
 </div>
 <div id="header">
 	<div class="loadindicator"></div>
-  <h1>TimeCard<span class="version">1.054</span></h1>
+  <h1>TimeCard<span class="version">1.055</span></h1>
   <div id="task_timer">
     <div id="timer_buttons">
       <button id="timer">Start Task</button>
@@ -46,11 +46,6 @@
 </div>
 <div class="clear"></div>
 
-<!--<ul id="tabstrip">
-  <li id="timelog_tab">Timelog</li>
-  <li id="todo_lists_tab">Todos</li>
-  <li id="prefs_tab">Prefs</li>
-</ul>-->
 <div id="tabs">
     <div id="todo_lists" class="tab">
       <h2><a href="#" onclick="$('#todo_list_content').toggle();return false;">Todo Lists</a></h2>
@@ -92,10 +87,7 @@
         </form>
       </div>
     
-        <form action="/" id="timesheet_form" method="post">
-          <table id="timesheet" class="timesheet" cellspacing="0">
-          </table>
-        </form>
+          <table id="timesheet" class="timesheet" cellspacing="0"></table>
       </div>
     
       <div id="prefs" class="tab">

@@ -177,6 +177,7 @@ td.description input {
     width:100%;
 }
 
+select.todos,
 #todos_wrapper select {
 	width:90%;
 	margin-bottom:4px;

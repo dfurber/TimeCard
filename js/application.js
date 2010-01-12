@@ -1,3 +1,10 @@
+function charSort(a, b){
+    a = a.toLowerCase(); b = b.toLowerCase();
+    if (a>b) return 1;
+    if (a <b) return -1;
+    return 0; 
+}
+
 var console = {
 	log: function(){
 		if (typeof(air.Introspector) != "undefined") 
@@ -62,19 +69,13 @@ var app = {
     	$('#timer').click(app.toggleTimer);
     	$('#pause_timer').click(app.pauseTimer);
     	$('#add_time form').submit(function(){return app.timelog.create();});
-    	$('#timesheet_form').submit(function(){return app.timelog.submitEdit(); });
+    	//$('#timesheet_form').submit(function(){return app.timelog.submitEdit(); });
     	$('.total_hours:first').html($('.total_hours:last').html());
     	$('input.datepicker').datepicker();
     	$('#prefs_submit').bind("click", app.establishConnection);
 		$('#reload_link').bind("click", function(){app.reload(); return false;});
 		$('#refresh_link').bind("click", function(){app.refreshTime(); return false;});
 
-		/*
-		$('#tabstrip li').bind("click", function(){
-            var tab = this.id.replace("_tab", "");
-            app.tabs.setTab(tab); 
-        });
-		*/
 		$(window).bind("load", this.establishConnection);
 	},
     ajaxOptions: {format:'xml', type:'GET',contentType: 'application/xml'},
@@ -135,7 +136,7 @@ var app = {
                 user = $('#prefs_username').val(),
                 password = $('#prefs_password').val(),
                 remember = $('#prefs_remember_me:checked').size() > 0;
-			console.log(url, user, password);
+			
 			if (url && user && password) {
                 found = true;
                 if (remember){
@@ -160,7 +161,8 @@ var app = {
         	opts.url = app.url + "/me.xml";
         	opts.username = user;
         	opts.password = password;
-        	opts.success = function(personNode) { 
+			
+			opts.success = function(personNode) { 
 				app.statusBar.set("Connected to app");
 				app.user = {
         		    id:        parseInt($(personNode).find("person > id").text()),
@@ -194,9 +196,11 @@ var app = {
             if (!app.projects){
                 app.loadProjects();
                 Cache.put("projects", JSON.stringify(app.projects));
+				Cache.put("todo_lists", JSON.stringify(app.todo_lists));
                 Cache.put("todo_items", JSON.stringify(app.todo_items));
             } else {
                 app.projects = JSON.parse(app.projects);
+				app.todo_lists = JSON.parse(Cache.get("todo_lists"));
                 app.todo_items = JSON.parse(Cache.get("todo_items"));
                 $(app.projects).each(function(){app.renderTodoListsForProject(this)});
             }
@@ -314,6 +318,7 @@ var app = {
                 app.todo_lists.push(temp_list[i]);
             }
 			app.statusBar.clear();
+			Cache.put("todo_lists", app.todo_lists);
         }
 		opts.error = function(){
 			
@@ -429,30 +434,34 @@ var app = {
 	    });
 	    $.ajax(opts);
 	},
+	getTodoOptions : function(param){
+		var html = ""
+		$(app.projects).each(function(){
+			if (this.id == param) {
+				html += "<option value=''>No Todo for this time entry</option>";
+
+				// until I have "add a new todo list" working, only add if there is an existing list
+				if (this.todo_lists.length > 0)
+					html += "<option value='new'>Add a new todo item</option>";
+				$(this.todo_lists).each(function(){
+					var list = this;
+					$(list.items).each(function(){
+						html += "<option value='" + this.id + "'>" + list.name + ": " + this.name + "</option>";
+					});
+				});
+			}
+		});
+		return html;
+	},
 	getTodos: function(){
 	    var param = $(this).val();
 	    if (!param) {
 	        $("#todos_wrapper").hide(); //slideUp("fast", function(){ $(this).remove()});
 	    } else {
-			var html = ""
-			$(app.projects).each(function(){
-				if (this.id == param) {
-					html += "<option value=''>No Todo for this time entry</option>";
-
-					// until I have "add a new todo list" working, only add if there is an existing list
-					if (this.todo_lists.length > 0)
-						html += "<option value='new'>Add a new todo item</option>";
-					$(this.todo_lists).each(function(){
-						var list = this;
-						$(list.items).each(function(){
-							html += "<option value='" + this.id + "'>" + list.name + ": " + this.name + "</option>";
-						});
-					});
-				}
-			});
+	        var html = app.getTodoOptions(param);
 			if (html.length > 0) {
-				$("#todos_wrapper").html("<img src='resources/todo_bug.gif' /><select id='todos' name='time_entry[todo_item_id]'>" + html + "</select>");
-				$('#todos').bind("change", app.checkForNewTodo);
+				$("#todos_wrapper").html("<img src='resources/todo_bug.gif' /><select id='todos' class='todos' name='time_entry[todo_item_id]'>" + html + "</select>");
+				$('select.todos').bind("change", app.checkForNewTodo);
 			}
 	    }
 	},
@@ -474,11 +483,12 @@ var app = {
 				newTodo.append("<option value=\"" + this.id + "\">" + this.name + "</option>");
 			});
 			var newTodoButton = $('<button id="new_todo_button">Add Todo</button>');
-			$('#todos').hide().after('<div id="new_todo_form"></div>');
+			var self = $(this);
+		    self.hide().after('<div id="new_todo_form"></div>');
 			$('#new_todo_form').append(newTodo).append(newTodoName).append(newTodoButton);
 			$('#new_todo_form').append('<button id="new_todo_cancel">Cancel</button>');
 			$('#new_todo_cancel').bind("click", function(){
-				$('#todos').show();
+				self.show().val('');
 				$('#new_todo_form').remove();
 				return false;
 			});
@@ -497,7 +507,7 @@ var app = {
 				} else {
 					// submit the form
 					app.statusBar.set("Adding new todo item");
-					$('#add_time').block({message: null});
+					app.tabs.block({message: null});
 					var options = $.extend({}, app.ajaxOptions);
 					options.processData = false;
 					options.async = false;
@@ -519,6 +529,7 @@ var app = {
 			var project = app.getProjectById($('#time_entry_project_id').val());
 			var id = response.getResponseHeader("Location").split("/");
 			var list = null;
+			var select = $('#new_todo_form').prev();
 	        id = id[id.length - 1];
 	        app.new_todo_item.id = id;
 			// add the new todo to the project
@@ -531,11 +542,11 @@ var app = {
 			// add it to the todo_items hash
 			app.todo_items[id] = app.new_todo_item;
 			// add it to the dropdown, select it, show the dropdown
-			$('#todos').append('<option value="' + id + '">' + list.name + ": " + app.new_todo_item.name + '</option>');
+			
+			select.append('<option value="' + id + '">' + list.name + ": " + app.new_todo_item.name + '</option>').val(id).show();
 			$('#new_todo_form').remove();
-			$('#todos').val(id).show();
 		}
-		$('#add_time').unblock();
+		app.tabs.unblock();
 		app.statusBar.clear();
 	},
 	findTodoItem : function(id){
@@ -556,9 +567,26 @@ var app = {
 	buildProjectDropdown : function(){
 	    var elm = $("#time_entry_project_id");
 		elm.html('');
-	    $(app.projects).each(function(){
-	        elm.append("<option value=\"" + this.id + "\">" + this.company_name.substring(0,12) + ": " + this.name.substring(0,25) + "</option>")
-	    });
+		var companies = [], company_names = [];
+		$(app.projects).each(function(){
+			if (companies[this.company_name])
+				companies[this.company_name].push(this);
+	 		else {
+				companies[this.company_name] = [this];
+				company_names.push(this.company_name);
+			}
+		});
+		$(company_names.sort(charSort)).each(function(){
+			var optgroup = $('<optgroup label="' + this + '"></optgroup>');
+			$(companies[this]).each(function(){
+				optgroup.append("<option value=\"" + this.id + "\">" + this.name + "</option>");
+			});
+			elm.append(optgroup);
+		});
+		
+	    //$(app.projects).each(function(){
+	        //elm.append("<option value=\"" + this.id + "\">" + this.name.substring(0,40) + " (" + this.company_name.substring(0,20) + ") </option>")
+	    //});
 	},
 	toggleTimer: function(){
 		var button = $(this);

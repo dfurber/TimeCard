@@ -85,7 +85,7 @@ var TimeLog = Class.create({
 		$('#container').removeClass("loading");
 	},
 	create : function(){
-		$('#add_time').block({message: null});
+		$('#add_time').block({message: "Sending time entry to Basecamp..."});
 		var self = this,
 			hours = $('#hours'),
 			project = $('#time_entry_project_id'),
@@ -199,7 +199,7 @@ TimeEntry = Class.create({
 		row.append("<td class=\"hours\">" + this.hours + "</td>");
 		var td = $("<td></td>");
 		td.addClass("actions");
-		//td.append("<a href=\"#\" class=\"edit\"><img alt=\"Edit\" src=\"resources/pencil.png\" title=\"Edit\" /></a>");
+		td.append("<a href=\"#\" class=\"edit\"><img alt=\"Edit\" src=\"resources/pencil.png\" title=\"Edit\" /></a>");
 		td.append("<a href=\"#\" class=\"delete\"><img alt=\"Delete\" src=\"resources/delete.png\" title=\"Delete\" /></a>");
 		td.append("<span class=\"date\" style=\"display:none;\">" + this.date + "</span>");
 		td.append("<span class=\"todo_id\" style=\"display:none;\">" + this.todo_id + "</span>");
@@ -213,49 +213,71 @@ TimeEntry = Class.create({
 		td.find("a.edit").bind("click", function(){self.edit()});
 		td.find("a.delete").bind("click", function(){self.destroy()});
 		row.append(td);
+		this.dom = row;
 		return row;
 	},
-	toXml : function(){
+	dateToBasecamp : function() {
 		var date = this.date.split("/");
-		date = date[2] + "-" + app.date.zeroPad(date[0]) + "-" + app.date.zeroPad(date[1]);
-
+		return date[2] + "-" + app.date.zeroPad(date[0]) + "-" + app.date.zeroPad(date[1]);
+	},
+	toXml : function(){
 		var data = '<time-entry>';
 		data += '<person-id>'+this.person_id +'</person-id>';
-		data += '<date>' + date + '</date>';
+		data += '<date>' + this.dateToBasecamp() + '</date>';
 		data += '<hours>' + this.hours + '</hours>';
 		data += '<description>' + this.description + '</description>';
 		data += '</time-entry>';
 		return data;
 	},
+	toPostData : function(){
+	    var date = this.dateToBasecamp();
+		return {
+			"_method" : "put",
+			"commit" : "Save",
+			"time_entry[description]" : this.description,
+			"time_entry[date(1i)]" : date.substring(0,4),
+			"time_entry[date(2i)]" : (date[5] == "0" ? "" : date[5]) + date[6],
+			"time_entry[date(3i)]" : (date[8] == "0" ? "" : date[8]) + date[9],
+			"time_entry[hours]" : this.hours,
+			"time_entry[person_id]" : this.person_id,
+			"time_entry[todo_item_id]" : this.todo_id
+		}
+	},
 	edit : function() {
-		var form = document.createElement("TR");
-		form.id = "edit_" + this.id;
-		form.className = "edit_form";
-		var row = $('#entry_' + this.id);
-		var date = $('span.date', row).html(),
-			description = $('td.description span.text', row).html(),
-			hours = $('td.hours', row).html(),
-			project = $('td.project', row).html()
-			
+		this.form = $("<tr class='edit_form' id='edit_" + this.id + "'></tr>");
+		var date = $('span.date', this.dom).html(),
+			description = $('td.description span.text', this.dom).html(),
+			hours = $('td.hours', this.dom).html(),
+			project = $('td.project', this.dom).html()
+
 		var html = "<td class='date'><input type='text' class='datepicker' name='time_entry[date]' value='" + date + "' /></td>";
 		html += "<td class='project'>" + project + "</td>";
-		html += "<td class='description'><input type='text' name='time_entry[description]' value='" + description + "' /></td>";
+		html += "<td class='description'>";
+		html += "<span class='todo'><select class='todos' name='time_entry[todo_item_id]'>" + app.getTodoOptions(this.project_id) + "</select></span>";
+		html += "<input type='text' name='time_entry[description]' value='" + description + "' /></td>";
 		html += "<td class='hours'><input type='text' name='time_entry[hours]' value='" + hours + "' /></td>";
-		html += "<td class='actions'><button class='save' type='submit'>Save</button><button id='canceledit" + this.id + "' class='cancel'>Cancel</button></td>";
+		html += "<td class='actions'><button class='save' title='Save Changes'>Save</button><button id='canceledit" + this.id + "' class='cancel' title='Cancel Edit'>Cancel</button></td>";
 		var self = this;
-		$(form).html(html).find("button.cancel").bind("click", function(){self.cancelEdit()});
-		$('#entry_' + this.id).hide().before(form);
-		$('tr.edit_form input.datepicker').datepicker();
+		this.form.html(html).find("button.cancel").bind("click", this, this.cancelEdit);
+		this.form.find('button.save').bind('click', this, this.update);
+		if (this.todo_id) {
+		    this.form.find("select.todos").val(this.todo_id);
+		}
+		this.dom.hide().before(this.form);
+		this.form.find('input.datepicker').datepicker();
+		this.form.find('select.todos').bind("change", app.checkForNewTodo);
+		$('select.todos:value[new]').val('').show();
+		$('#new_todo_form').remove();
 		return false;
 	},
-	cancelEdit: function() {
-		$('#edit_' + this.id).remove();
-		$('#entry_' + this.id).show();
+	cancelEdit: function(e) {
+	    e.data.form.remove();
+	    e.data.dom.show();
 		return false;
 	},
 	destroy: function(){
 		var self = this;
-		$('#entry' + this.id).block();
+		this.dom.block({message: "Removing entry from Basecamp..."});
 		opts = $.extend(app.ajaxOptions, {
 			type: 'DELETE', 
 			processData: false,
@@ -273,57 +295,92 @@ TimeEntry = Class.create({
 		$.ajax(opts);
 		return false;
 	},		
-	update : function() {
-		$('tr.edit_form').block();
+	update : function(e) {
+	    var self = e.data;
+		self.form.block({message: "Sending updated entry to Basecamp..."});
 		var errors,
-			description = $('tr.edit_form td.description input').val(),
-			date = $('tr.edit_form td.date input').val(),
-			hours = $('tr.edit_form td.hours input').val(),
+			description = self.form.find('td.description input').val(),
+			date = self.form.find('td.date input').val(),
+			hours = self.form.find('td.hours input').val(),
+			todo_id = self.form.find('td.description select').val(),
 			opts = $.extend(app.ajaxOptions, {type: "put", processData: false});
-			
+    		
 		if (!description) {
-			$('tr.edit_form td.description input').addClass("error");
+			self.form.find('td.description input').addClass("error");
 			errors = true;
 		}
 		if (!date) {
-			$('tr.edit_form td.date input').addClass("error");
+			self.form.find('td.date input').addClass("error");
 			errors = true;
 		}
 		if (!hours) {
-			$('tr.edit_form td.hours input').addClass("error");
+			self.form.find('td.hours input').addClass("error");
 			errors = true;
 		}
 			
 		if (errors) {
-			$('tr.edit_form').unblock();
+			self.form.unblock();
 			return;
 		}
-			
-		this.date = date;
-		this.hours = hours;
-		this.description = description;
-		opts.data = this.toXml(); 
 		
-		opts.url = app.url + "/time_entries/" + this.id + ".xml";
 		
-		var self = this;
+		if ((self.date == date) && (self.hours == hours) && (self.description == description) && (self.todo_id == todo_id)) {
+		    self.form.unblock()
+		    self.form.remove();
+		    self.dom.show();
+		    return;
+		}
+		
+		self.date = date;
+		self.hours = hours;
+		self.description = description;
+		self.todo_id = todo_id;
+		
+		opts.data = self.toPostData();
+		//opts.data = this.toXml(); 
+		
+		opts.processData = true;
+		opts.contentType = "application/x-www-form-urlencoded";
+		delete opts.format;
+		opts.type = "POST"; // instead of put
+		opts.url = app.url + "/time_entries/" + self.id;
+		
+		opts.beforeSend = function(xhr){
+			xhr.setRequestHeader("Referer", app.url + "/projects/" + self.project_id + "/time_entries");
+			xhr.setRequestHeader("X-Prototype-Version", "1.6.1");
+			xhr.setRequestHeader("User-Agent", "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7");
+			xhr.setRequestHeader("Accept", "text/javascript, text/html, application/xml, text/xml, */*");
+		}
 		opts.complete = function(response){
 		   	if (response.status == 200){
-				$('tr.edit_form').unblock().remove();
-				var row = $('#entry_' + self.id);
-				$('td.date', row).html(app.date.convert(self.date).format('l n/j'));
-				$('td.description span.text', row).html(self.description);
-				$('td.hours', row).html(self.hours);
-				$('span.date').html(self.date);
+				self.form.unblock().remove();
+				self.dom.find('td.date').html(app.date.convert(self.date).format('l n/j'));
+				self.dom.find('td.description span.text').html(self.description);
+				self.dom.find('td.hours').html(self.hours);
+				self.dom.find('span.date').html(self.date);
+                var todo = self.dom.find('span.todo')
+				if (self.todo_id) {
+				    if (todo.size() > 0)
+				        todo.html(app.todo_items[self.todo_id].name);
+				    else {
+				        self.dom.find('td.description').prepend("<span class='todo'>" + app.todo_items[self.todo_id].name + "</span>");
+				    }
+				} else {
+				    todo.remove();
+				}
+				self.dom.find('span.todo_id').html(self.todo_id);
 				self.parent.calculateTotalHours();
-				row.show();
-				$("td", row).effect("highlight");
+				self.dom.show();
+				self.dom.find("td").effect("highlight");
 	   		} else {
-				$('tr.edit_form').unblock();	
+				self.form.unblock();	
 			}
 		};
-		o = opts;
-		console.log(o);
+		opts.error = function(response){
+			self.form.unblock();
+			// should do something more graceful here....
+		}
+				
 		$.ajax(opts);
 	}
 
