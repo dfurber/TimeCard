@@ -6,7 +6,7 @@
   <customUpdateUI>false</customUpdateUI>
   <name>TimeCard</name>
   <id>name.davidfurber.timecard</id>
-  <version>1.055</version>
+  <version>1.17</version>
   <initialWindow>
     <content>index.html</content>
     <height>600</height>
@@ -15,4 +15,10 @@
     <transparent>false</transparent>
     <visible>true</visible>
   </initialWindow>
+  <icon>
+    <image128x128>icons/icon_128.png</image128x128>
+    <image48x48>icons/icon_48.png</image48x48>
+    <image32x32>icons/icon_32.png</image32x32>
+    <image16x16>icons/icon_16.png</image16x16>
+  </icon>
 </application>

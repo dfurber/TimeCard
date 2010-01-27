@@ -4,28 +4,40 @@ body, td, input, select {
 }
 
 body {
-  margin:0;
-	padding:10px;
-	padding-top:0px;
-	background:#ccc;
+  	margin:0;
+	background:#ccc url(/resources/pinstripes-classic.gif);
+	padding:0 10px 10px;
+}
+
+#app_top {
+	margin-bottom:10px;
 }
 
 #dashboard {
+	display: block;
+	position: relative;
 	text-align:right;
 	color:white;
-	background:#333;
-	font-size:10px;
-	padding:5px 10px;
-	overflow:hidden;
+	background:rgb(51,51,51);
+	border-top: 1px solid #3e3e3e;
+	border-bottom:1px solid rgb(30,30,30);
+	font-size:12px;
+	line-height:16px;
+	height:20px;
+	padding:4px 10px 0;
+	margin:0 -10px;
+	clear:both;
 }
 
 #dashboard #identity {
   float:left;
   display:none;
+  margin:0;
 }
 
 #dashboard #status_bar_elm {
   float:right;
+  margin:0;
 }
 
 #dashboard a {
@@ -51,9 +63,11 @@ input, select {
 }
 
 #header {
-	background:#777;
-	overflow:hidden;
-	padding:10px;
+	background:black url(/resources/head-fade-bk.png);
+	border-bottom:1px solid rgb(30,30,30);
+	padding:0px 10px;
+	height:45px;
+	margin:0 -10px;
 }
 
 h1 {
@@ -61,7 +75,7 @@ h1 {
 	float:left;
 	color:white;
 	margin-right:20px;
-	margin-top:10px;
+	margin-top:5px;
 	margin-bottom:0;
 }
 
@@ -71,38 +85,40 @@ h1 span.version {
 }
 
 #task_timer {
-	margin-top:1em;
-	float:left;
+	margin-top:5px;
+	display:inline-block;
+	vertical-align:middle;
 }
 
 #timeclock {
-    float:left;
-	  margin-right:20px;
-	  font-size:20px;
-	  color:white;
+	vertical-align:middle;
+	display:inline-block;
+	margin-right:20px;
+	font-size:20px;
+	color:white;
 }
 
 #timer_buttons {
-    float:left;
     width:100px;
+	display:inline-block;
+	vertical-align:middle;
 }
 
 #timer_buttons button {
-    display:block;
-    margin-bottom:6px;
 }
 
 #pause_timer {
-  float:left;
 }
 
 #summary {
     float:right;
     border:1px solid #999;
     background:#eee;
-    padding:10px;
+    padding:5px;
+	margin-top:5px;
     text-align:center;
     display:none;
+	-webkit-border-radius:10px;
 }
 
 #summary .total_hours {
@@ -140,10 +156,14 @@ td.actions {
 	width:100px;
 }
 
+#timesheet td.actions {
+	width:80px;
+}
+
 th {
 	text-align:left;
 	background:#eee;
-	border-top:1px solid #999;
+	/*border-top:1px solid #999;*/
 }
 
 td, th {
@@ -157,6 +177,11 @@ th {
 
 td {
 	border-bottom:1px solid #999;
+	vertical-align:middle;
+}
+
+#timesheet tr:hover td {
+ 	background-color:#ffe;
 }
 
 input.datepicker {
@@ -171,6 +196,26 @@ td.project select {
 
 td.hours input {
 	width:40px;
+}
+
+select {
+	background:white;
+	border:1px solid #aaa;
+}
+
+input {
+	border:1px solid #aaa;
+}
+
+button {
+	color: #555;
+	font-weight: bold;
+	padding:4px 8px;
+	opacity: 1;
+	background-color: #eee;
+	border: 1px solid #aaa;
+	text-shadow: #fff 0 1px 0;
+	-webkit-border-radius: 8px;
 }
 
 td.description input {
@@ -202,11 +247,12 @@ tfoot td {
 }
 
 #add_time td {
-	background:#ddd;
+	/*background:#ddd;*/
+	border-bottom:none;
 }
 
 tr.edit_form td {
-	background:#eee;
+	background:#ffe;
 }
 
 button.save {
@@ -217,6 +263,7 @@ button.save {
 	height:16px;
 	margin-right:4px;
 	border:none;
+	-webkit-border-radius:none;
 }
 
 button.cancel {
@@ -226,7 +273,15 @@ button.cancel {
 	width:16px;
 	height:16px;
 	border:none;
+	-webkit-border-radius:none;
 }
+
+#prefs dl {
+clear:both;
+}
+
+#prefs dt { float:left; }
+#prefs dd { margin-left:150px; }
 
 #container.loading * {
   display:none;
@@ -267,31 +322,43 @@ div.tab {
   display:none;
   background:#fff;
   padding:10px;
-  height:440px;
   overflow-y:auto;
+  -webkit-border-radius:8px;
+  -webkit-box-shadow:#000 5px 5px 5px;
 }
 
-#tabstrip {
-  overflow:hidden;
-  margin:0;list-style:none;
-  background:#777;
-  padding:0px 10px;
+#timelog {
+	background:none;
+	padding:10px 0px;
+	overflow:hidden;
+	border:1px solid #ccc;
 }
 
-#tabstrip li {
-  float:left;
-  padding:5px 10px;
-  color:#fff;
-  cursor:pointer;
+#add_time {
+	padding-top:10px;
+	background:#eee;
+	-webkit-border-top-left-radius:8px;
+	-webkit-border-top-right-radius:8px;
+	margin-top:-10px;
+	border-bottom:1px solid #ccc;
 }
 
-#tabstrip #prefs_tab {
-  float:right;
+
+td.date, th.date {
+	padding-left:14px;
 }
 
-#tabstrip li.current {
-  background:#fff;
-  color:#333;
+td.actions, th.actions {
+	padding-right:14px;
+}
+
+#timesheet_wrapper {
+	-webkit-border-bottom-left-radius:8px;
+	-webkit-border-bottom-right-radius:8px;
+  background:white;
+  overflow-x:hidden;
+  overflow-y:scroll;
+	border-width:0px 1px 1px 1px;
 }
 
 /*

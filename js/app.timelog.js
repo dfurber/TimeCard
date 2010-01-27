@@ -33,6 +33,12 @@ var TimeLog = Class.create({
 		$('#time_entry_date').val(new Date().format('m/d/Y'));
 		this.load();
 	},
+	sort: function(a,b){
+        a = new Date(a.date); b = new Date(b.date);
+        if (a>b) return -1;
+        if (a <b) return 1;
+        return 0; 
+	},
 	refresh: function(){
 	  $('#timesheet tbody').html('');
 	  this.load();  
@@ -46,21 +52,18 @@ var TimeLog = Class.create({
 		app.buildIdentityBox();
 		this.entries = [];
 		var self = this;
-		$.ajax({
-			url: app.url + "/time_entries/report.xml",
+		app.connection.request({
+			url: "/time_entries/report.xml",
 			data: {
 				from: app.date.getStart(), 
 				to: app.date.getEnd(), 
 				subject_id: app.user.id
 			},
-			format:'xml',
-			type:'GET',
-			//async:false,
-			cache:false,
 			success: function(root) {
 				$(root).find("time-entry").each(function(){
 					self.entries.push(new TimeEntry(this, self)); 
 				});
+				self.entries.sort(self.sort);
 				self.render();
 				app.statusBar.clear();
 				app.tabs.unblock();
@@ -70,7 +73,7 @@ var TimeLog = Class.create({
 				app.statusBar.set("There was an error loading the time entries");	
 				app.tabs.unblock();
 				$('.loadindicator').hide();
-			},
+			}
 		});
 	},
 	render: function(){
@@ -83,8 +86,10 @@ var TimeLog = Class.create({
 		this.calculateTotalHours();
 		app.buildProjectDropdown();
 		$('#container').removeClass("loading");
+		app.fitLayout();
 	},
 	create : function(){
+	    console.log('starting to add time entry to basecamp');
 		$('#add_time').block({message: "Sending time entry to Basecamp..."});
 		var self = this,
 			hours = $('#hours'),
@@ -92,7 +97,9 @@ var TimeLog = Class.create({
 			errors,
 			date,
 			date_orig,
-			opts = $.extend(app.ajaxOptions, {type: "POST", processData: false});
+            opts = $.extend({}, app.ajaxOptions);
+		opts.type = "POST";
+		opts.processData = false;
 		if (!hours.val()) {
 			hours.addClass("error");
 			errors = true;
@@ -118,24 +125,28 @@ var TimeLog = Class.create({
 			}, self);
 				
 			opts.data = time_entry.toXml();
+			console.log('prepared time entry data');
 			if ($('#todos').val()) 
 				opts.url = app.url + "/todo_items/" + $('#todos').val() + "/time_entries.xml";
 			else 
 				opts.url = app.url + "/projects/" + $('#time_entry_project_id').val() + "/time_entries.xml";
-
 			opts.complete = function(response){
 				if (response.status == 201){
+				    console.log('successfully completed request to post time');
 					var id = response.getResponseHeader("Location").split("/");
 					id = id[id.length - 1];
 					time_entry.id = id;
 					var tr = $(time_entry.toHtml());
 					$('#timesheet').prepend(tr);
+					console.log('about to add todo link');
 					$("span.todo_id", tr).each(app.addTodoLink);
+					console.log('added todo link');
 					$("td", tr).effect("highlight");
 					self.calculateTotalHours();
 					$('#description,#hours').val('');
 					//app.clock.countdown("destroy");
 					self.entries.push(time_entry);
+					console.log('processed the response from basecamp');
 				}
 				$('#add_time').unblock();
 			};
@@ -278,7 +289,8 @@ TimeEntry = Class.create({
 	destroy: function(){
 		var self = this;
 		this.dom.block({message: "Removing entry from Basecamp..."});
-		opts = $.extend(app.ajaxOptions, {
+        var opts = $.extend({}, app.ajaxOptions);
+		$.extend(opts, {
 			type: 'DELETE', 
 			processData: false,
 			url: app.url + "/time_entries/" + this.id + ".xml",
@@ -292,6 +304,7 @@ TimeEntry = Class.create({
 				}
 			}
 		});
+		console.log(opts);
 		$.ajax(opts);
 		return false;
 	},		
@@ -303,7 +316,7 @@ TimeEntry = Class.create({
 			date = self.form.find('td.date input').val(),
 			hours = self.form.find('td.hours input').val(),
 			todo_id = self.form.find('td.description select').val(),
-			opts = $.extend(app.ajaxOptions, {type: "put", processData: false});
+			opts = {};
     		
 		if (!description) {
 			self.form.find('td.description input').addClass("error");
@@ -323,7 +336,6 @@ TimeEntry = Class.create({
 			return;
 		}
 		
-		
 		if ((self.date == date) && (self.hours == hours) && (self.description == description) && (self.todo_id == todo_id)) {
 		    self.form.unblock()
 		    self.form.remove();
@@ -336,52 +348,43 @@ TimeEntry = Class.create({
 		self.description = description;
 		self.todo_id = todo_id;
 		
-		opts.data = self.toPostData();
-		//opts.data = this.toXml(); 
-		
-		opts.processData = true;
-		opts.contentType = "application/x-www-form-urlencoded";
-		delete opts.format;
-		opts.type = "POST"; // instead of put
-		opts.url = app.url + "/time_entries/" + self.id;
-		
-		opts.beforeSend = function(xhr){
-			xhr.setRequestHeader("Referer", app.url + "/projects/" + self.project_id + "/time_entries");
-			xhr.setRequestHeader("X-Prototype-Version", "1.6.1");
-			xhr.setRequestHeader("User-Agent", "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; en-US; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7");
-			xhr.setRequestHeader("Accept", "text/javascript, text/html, application/xml, text/xml, */*");
-		}
-		opts.complete = function(response){
-		   	if (response.status == 200){
-				self.form.unblock().remove();
-				self.dom.find('td.date').html(app.date.convert(self.date).format('l n/j'));
-				self.dom.find('td.description span.text').html(self.description);
-				self.dom.find('td.hours').html(self.hours);
-				self.dom.find('span.date').html(self.date);
-                var todo = self.dom.find('span.todo')
-				if (self.todo_id) {
-				    if (todo.size() > 0)
-				        todo.html(app.todo_items[self.todo_id].name);
-				    else {
-				        self.dom.find('td.description').prepend("<span class='todo'>" + app.todo_items[self.todo_id].name + "</span>");
-				    }
-				} else {
-				    todo.remove();
-				}
-				self.dom.find('span.todo_id').html(self.todo_id);
-				self.parent.calculateTotalHours();
-				self.dom.show();
-				self.dom.find("td").effect("highlight");
-	   		} else {
-				self.form.unblock();	
-			}
-		};
-		opts.error = function(response){
-			self.form.unblock();
-			// should do something more graceful here....
-		}
-				
-		$.ajax(opts);
+        var url = app.url + "/time_entries/" + self.id + ".xml";
+        var successful = false;  
+
+        app.connection.request({
+            url: "/time_entries/" + self.id + ".xml",
+            data: self.toXml(),
+            type: "PUT",
+            complete: function(){
+                if (app.connection.successful) {
+        			self.form.unblock().remove();
+        			self.dom.find('td.date').html(app.date.convert(self.date).format('l n/j'));
+        			self.dom.find('td.description span.text').html(self.description);
+        			self.dom.find('td.hours').html(self.hours);
+        			self.dom.find('span.date').html(self.date);
+                    var todo = self.dom.find('span.todo')
+        			if (self.todo_id) {
+        			    if (todo.size() > 0)
+        			        todo.html(app.todo_items[self.todo_id].name);
+        			    else {
+        			        self.dom.find('td.description').prepend("<span class='todo'>" + app.todo_items[self.todo_id].name + "</span>");
+        			    }
+        			} else {
+        			    todo.remove();
+        			}
+        			self.dom.find('span.todo_id').html(self.todo_id);
+        			self.parent.calculateTotalHours();
+        			self.dom.show();
+        			self.dom.find("td").effect("highlight");
+                } else {
+                    self.form.unblock();
+                }
+            }
+    	});
+        // loader.load(request);
+        		
+		// console.log(opts);
+		// $.ajax(opts);
 	}
 
 });

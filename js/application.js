@@ -1,3 +1,13 @@
+var base = {
+    toJSON : function(key){
+        var hash = {}
+        for (i in this) 
+            if (typeof(this[i]) !== "function")
+                hash[i] = this[i];
+        return hash;
+    }
+}
+
 function charSort(a, b){
     a = a.toLowerCase(); b = b.toLowerCase();
     if (a>b) return 1;
@@ -55,6 +65,9 @@ var TabControl = Class.create({
 
 var app = {
 	init: function(){
+		app.fitLayout();
+		$(window).resize(app.fitLayout);
+	    app.checkForUpdates();
 		app.timelog = new TimeLog();
 		app.buildMenu();
 		app.statusBar = new StatusBar();
@@ -82,6 +95,16 @@ var app = {
     projects: [],
     todo_items: {},
     todo_lists: [],
+    checkForUpdates : function() {
+        app.updater = new runtime.air.update.ApplicationUpdaterUI();
+        var appFolder = air.File.applicationDirectory;
+        app.updater.configurationFile = appFolder.resolvePath("updaterConfig.xml");
+        app.updater.initialize();
+    },
+	fitLayout : function(){
+		$('div.tab').css("height", ($(window).height() - $('#app_top').height() - 45) + "px");
+		$('#timesheet_wrapper').css("height", ($('#timelog').height() - $('#add_time').height() + 10) + "px");
+	},
 	buildMenu: function(){
 		if (air.NativeWindow.supportsMenu) {
    			nativeWindow.menu = new air.NativeMenu();
@@ -99,6 +122,8 @@ var app = {
 		newCustomer.addEventListener(air.Event.SELECT, app.reload);
 		newCustomer = reloadMenu.submenu.addItem(new air.NativeMenuItem("Time Log Only"));
 		newCustomer.addEventListener(air.Event.SELECT, function(){app.timelog.refresh()});
+		
+
 		var viewMenu = targetMenu.addItem(new air.NativeMenuItem("View"));
 		viewMenu.submenu = new air.NativeMenu();
 		newItem = viewMenu.submenu.addItem(new air.NativeMenuItem("Back One Week"));
@@ -108,18 +133,18 @@ var app = {
 		newItem = viewMenu.submenu.addItem(new air.NativeMenuItem("This Week"));
 		newItem.addEventListener(air.Event.SELECT, function(){app.timelog.showThisWeek()});
 		
-		var prefsMenu = targetMenu.addItem(new air.NativeMenuItem("Basecamp Account"));
+		var prefsMenu = targetMenu.addItem(new air.NativeMenuItem("Preferences"));
 		prefsMenu.submenu = new air.NativeMenu();
-		newCustomer = prefsMenu.submenu.addItem(new air.NativeMenuItem("Log In"));
+		newCustomer = prefsMenu.submenu.addItem(new air.NativeMenuItem("Set Basecamp Account"));
 		newCustomer.addEventListener(air.Event.SELECT, function(){app.reset()});
-		newCustomer = prefsMenu.submenu.addItem(new air.NativeMenuItem("Forget Me"));
-		newCustomer.addEventListener(air.Event.SELECT, function(){app.tabs.setTab("prefs");});
-		
+		newCustomer = prefsMenu.submenu.addItem(new air.NativeMenuItem("Check for Updates"));
+		newCustomer.addEventListener(air.Event.SELECT, function(){if (app.updater) {app.updater.checkNow();} else { alert("The updater isn't ready yet.");} });
+
 		viewTimelog = viewMenu.submenu.addItem(new air.NativeMenuItem("Time Log"));
 		viewTimelog.addEventListener(air.Event.SELECT, function(){app.tabs.setTab("timelog");});
 
-		viewTodos = viewMenu.submenu.addItem(new air.NativeMenuItem("Todo Lists"));
-		viewTodos.addEventListener(air.Event.SELECT, function(){app.tabs.setTab("todo_lists");});
+        // viewTodos = viewMenu.submenu.addItem(new air.NativeMenuItem("Todo Lists"));
+        // viewTodos.addEventListener(air.Event.SELECT, function(){app.tabs.setTab("todo_lists");});
 
 	},
     establishConnection: function(){
@@ -136,7 +161,7 @@ var app = {
                 user = $('#prefs_username').val(),
                 password = $('#prefs_password').val(),
                 remember = $('#prefs_remember_me:checked').size() > 0;
-			
+			url = url.replace(/\/$/,''); // remove trailing slash from url
 			if (url && user && password) {
                 found = true;
                 if (remember){
@@ -151,63 +176,55 @@ var app = {
         // if found, set the connection vars, switch tab to time log, and load the user
         // otherwise show the prefs tab - whose submit runs this function
         if (found){
+
 			app.url = url;
-			//app.ajaxOptions.username = user;
-			//app.ajaxOptions.password = password;
-            //air.Introspector.Console.log('connecting to app');
+			app.username = user;
+			app.password = password;
+			
+			app.ajaxOptions.username = app.username;
+			app.ajaxOptions.password = app.password;
+
 			app.statusBar.set("Connecting to Basecamp");
 			app.tabs.block();
-			var opts = $.extend({async:true, cache:false}, app.ajaxOptions);
-        	opts.url = app.url + "/me.xml";
-        	opts.username = user;
-        	opts.password = password;
+        	app.connection = new Connection(url, user, password);
 			
-			opts.success = function(personNode) { 
-				app.statusBar.set("Connected to app");
-				app.user = {
-        		    id:        parseInt($(personNode).find("person > id").text()),
-        		    username:  $(personNode).find("person > user-name").text(),
-					password:  password,
-        		    email:     $(personNode).find("person > email-address").text(),
-        		    firstname: $(personNode).find("person > first-name").text(),
-        		    lastname:  $(personNode).find("person > last-name").text()
-        		}
-        		app.tabs.setTab("timelog");
-        		app.fetchProjects();
-        	};
-        	opts.error = function(response){
-        	    // do something
-				app.tabs.unblock();
-				app.statsBar.set("Unable to authenticate you");
-        	    app.tabs.setTab("prefs");
-        	    $('#prefs_basecamp_url').focus();
-        	}
-			
-        	$.ajax(opts);
+            app.connection.request({
+            // var opts = $.extend(app.ajaxOptions, {
+			    type: "GET",
+			    url: "/me.xml",
+                success: function(personNode) { 
+            		//console.log(personNode)
+    				app.statusBar.set("Connected to app");
+    				app.user = {
+            		    id:        parseInt($(personNode).find("person > id").text()),
+            		    username:  $(personNode).find("person > user-name").text(),
+    					password:  password,
+            		    email:     $(personNode).find("person > email-address").text(),
+            		    firstname: $(personNode).find("person > first-name").text(),
+            		    lastname:  $(personNode).find("person > last-name").text()
+            		}
+            		app.tabs.setTab("timelog");
+        			app.statusBar.set("Fetching projects and todos");
+        			app.loadProjects();
+            	},
+            	error : function(response){
+            	    // do something
+    				app.tabs.unblock();
+    				app.statsBar.set("Unable to authenticate you");
+            	    app.tabs.setTab("prefs");
+            	    $('#prefs_basecamp_url').focus();
+            	}
+            	
+			});
+			//$.ajax(opts);
+        	
         } else {
     	    app.tabs.setTab("prefs");
     	    $('#prefs_app.url').focus();
         }
     },
-    fetchProjects : function(){
-        if (app.user){
-			app.statusBar.set("Fetching projects and todos");
-            app.projects = Cache.get("projects");
-            if (!app.projects){
-                app.loadProjects();
-                Cache.put("projects", JSON.stringify(app.projects));
-				Cache.put("todo_lists", JSON.stringify(app.todo_lists));
-                Cache.put("todo_items", JSON.stringify(app.todo_items));
-            } else {
-                app.projects = JSON.parse(app.projects);
-				app.todo_lists = JSON.parse(Cache.get("todo_lists"));
-                app.todo_items = JSON.parse(Cache.get("todo_items"));
-                $(app.projects).each(function(){app.renderTodoListsForProject(this)});
-            }
-            app.timelog.showThisWeek();
-        }
-    },
 	reset: function(){
+	    app.tabs.unblock();
 		Cache.reset();
 		app.user = null;
 		app.todo_items = {};
@@ -223,6 +240,7 @@ var app = {
         $('#todo_list_content').html('');
         Cache.remove("projects");
         Cache.remove("todo_items");
+        Cache.remove("todo_lists");
 		app.projects = [];
         app.todo_items = {};
         app.todo_lists = [];
@@ -235,185 +253,53 @@ var app = {
       $('#identity span.end').html(app.timelog.endDate.format('n/j'));  
       $('#identity').show();
     },
+    fetchProjects : function(){
+        if (app.user){
+			app.statusBar.set("Fetching projects and todos");
+			app.loadProjects();
+            // Project.loadFromCache();
+            //             if (app.projects.length < 1){
+            //                 console.log('loading projects from basecamp');
+            //                 app.loadProjects();
+            //             } else {
+            //                 console.log('loading projects from cache');
+            //                 try {
+            //                     TodoList.loadFromCache();
+            //                     TodoItem.loadFromCache();
+            //                     app.timelog.showThisWeek();                    
+            //                 } catch(e) {
+            //                     console.log('incomplete data, reloading...', e);
+            //                     app.loadProjects();
+            //                 }
+            //             }
+        }
+    },
     loadProjects : function(){
-        //air.Introspector.Console.log("loading project list")
-        var opts = $.extend(app.ajaxOptions, {
-            url: app.url + "/projects.xml", 
-            type:'GET',
-            async: false, 
-            cache: false            
+        var opts = $.extend({}, app.ajaxOptions);
+        // $.extend(opts, {
+        //     type: "GET",
+        //     cache: false,
+        app.connection.request({
+            url: "/projects.xml",
+            success : function(root){
+                console.log('processing projects');
+                app.projects = [];
+                app.todo_lists = [];
+                app.todo_items = [];
+                $(root).find("project").each(function(){
+                    if ($(this).find("status").text() == "active")
+                        app.projects.push(new Project.fromXml(this)); 
+                });
+                TodoList.load();
+                // app.loadTodos();
+            },
+    		error : function(){
+    			app.statusBar.set("Error loading projects");	
+    			console.log("error is in loadProjects");
+    		}
         });
-        opts.success = function(root){
-            //air.Introspector.Console.log("filtering active projects")
-            app.projects = [];
-            $(root).find("project").each(function(){
-                if ($(this).find("status").text() == "active")
-                    app.projects.push({
-                        name: $(this).children("name").text(),
-						company_name: $(this).children("company").children("name").text(),
-                        description: $(this).children("announcement").text(),
-                        id: $(this).children("id").text(),
-                        todo_lists: []
-                    }); 
-            });
-            //air.Introspector.Console.log("projects loaded", app.projects);
-            app.loadTodos();
-        };
-		opts.error = function(){
-			app.statusBar.set("Error loading projects");	
-		}
-        $.ajax(opts);
-    },
-
-	parseTodoItem : function(item, id){
-		var mine, rpid, rpel = $(item).children("responsible-party-id");
-        if (rpel){
-        	rpid = rpel.text();
-            if (rpid == app.user.id)
-            	mine = true;
-        }
-        return {
-        	id: id,
-            name: $(item).children("content").text(),
-            completed: ($(item).children("completed").text() == "true"),
-            mine: mine,
-            list: $(item).children("todo-list-id").text()
-        };
-
-	},
-    loadTodos : function(){
-        //air.Introspector.Console.log("loading todos")
-		app.statusBar.set("Loading todo items");
-        var opts = $.extend(app.ajaxOptions, {
-            url: app.url + "/todo_lists.xml",
-            data: {'responsible_party': app.user.id},
-            type: 'GET',
-            async: false,
-            cache: false
-        });
-        var state = "mine";
-        opts.success = function(root){
-            var temp_list = [], mine;
-            $(root).find("todo-list").each(function(){
-               var id = $(this).children("id").text(),
-                    project_id = $(this).children("project-id").text();
-               
-               // cycle through the projects and todo lists to see if we have a new lists or items to add
-               var list = {
-                   id: id,
-                   name: $(this).children("name").text(),
-                   completed: ($(this).children("completed").text() == "true"),
-                   project_id: project_id,
-                   items: []
-               } 
-               $(this).find("todo-item").each(function(){
-					var id = $(this).children("id").text(),
-						hash = app.parseTodoItem(this, id);
-                   list.items.push(hash);
-                   app.todo_items[id] = hash;
-               });
-               temp_list.push(list);
-            });
-            for(var i=temp_list.length-1;i>=0;i--){
-                app.todo_lists.push(temp_list[i]);
-            }
-			app.statusBar.clear();
-			Cache.put("todo_lists", app.todo_lists);
-        }
-		opts.error = function(){
-			
-		}
-        $.ajax(opts);
-        state = "anyone";
-        opts.url = app.url + "/todo_lists.xml";
-        opts.data = {"responsible_party": ""};
-        $.ajax(opts);
-        
-        // now that I have the todos I need to attach them to their projects
-        $(app.todo_lists).each(function(){
-            var project = app.getProjectById(this.project_id);
-            // my todos are loaded first, so we can assume that we haven't already added this todo list
-            if (state == "mine")
-                project.todo_lists.push(this);
-            else {
-                // we need to see if we have already loaded the list, and if so concat the items
-                var matched;
-                for (var i=0;i<project.todo_lists.length;i++){
-                    if (project.todo_lists[i].id == this.id) {
-                        matched = true;
-                        project.todo_lists[i].items = project.todo_lists[i].items.concat(this.items);
-                    }
-                }
-                if (!matched){
-                    project.todo_lists.push(this);
-                }
-            }
-        });
-
-    	for (i in app.projects) {
-            // app.projects[i].todo_lists = app.loadTodosForProject(app.projects[i].id);
-            app.renderTodoListsForProject(app.projects[i]);
-    	}
-        
-    },
-    renderTodoListsForProject : function(project){
-        var elm = $('#todo_list_content'), 
-            list_count = project.todo_lists.length,
-            item_count = 0; //, my_items_count = 0;
-        $(project.todo_lists).each(function(){
-            item_count += this.items.length;
-            // $(this.items).each(function(){
-            //     if (this.mine) my_items_count += 1;
-            // })
-        })
-        if (item_count){
-            // elm.append("<a style=\"float:right\" href=\"#\" onclick=\"this.refreshTodoList(" + project.id + ");return false;\">Refresh</a>");
-            elm.append("<h3>" + project.name + " (" + item_count + " todos on " + list_count + " lists)</h3>");
-            var div = $('<div id="todo_project_' + project.id + '" style="display:none"></div>');
-            app.renderTodoListContents(project.todo_lists, div);
-            elm.append(div);
-			elm.find("h3").bind("click", function(){$('#todo_project_' + project.id).slideToggle();});
-        }        
-    },
-    renderTodoListContents : function(lists, div) {
-        $(lists).each(function(){
-            var h4 = $("<h4>" + this.name + "</h4>"), items_completed = true;
-            div.append(h4);
-            var subdiv = $("<ol></ol>");
-            $(this.items).each(function(){
-                var li = $("<li id=\"item" + this.id + "\">" + this.name + "</li>");
-                if (this.mine)
-                    li.addClass("mine");
-                if (this.completed) {
-                    li.addClass("completed");
-                } else {
-                    items_completed = false;
-                    li.append("<span>(<a href=\"#\">completed?</a>)</span>");
-                }
-				li.find("a").bind("click", function(){app.completeTodoItem($(this).parents("li").attr("id").replace("item",""));return false;});
-                subdiv.append(li);
-            });
-            if (items_completed) h4.addClass("completed");
-            div.append(subdiv);
-        });
-        div.find("h4").bind("click", function(){$(this).next("ol").slideToggle();})
-        
-    },
-    refreshTodoList : function(id){
-        var project, index;
-        for(i in app.projects)
-            if (app.projects[i].id == id) {
-                project = app.projects[i];
-                index = i;
-            }
-        if (project) {
-            var div = $('#todo_project_' + id);
-            div.html('').addClass("loading");
-            var todos = app.loadTodosForProject(id);
-            app.renderTodoListContents(todos, div);
-            app.projects[index].todo_lists = todos;
-            Cache.put("projects", JSON.stringify(app.projects));
-        }
+        //$.ajax(opts);
+        //console.log('called loadProjects', opts);
     },
 	addTodoLink : function(){
 		var text = $(this).html();
@@ -422,36 +308,24 @@ var app = {
 			$(this).parents("tr").children("td.description").prepend("<span class='todo'>" + app.todo_items[text].name + "</span>");
 		}	
 	},
-	completeTodoItem : function(id){
-	    var opts = $.extend(app.ajaxOptions,{
-	        url: app.url + "/todo_items/" + id + "/complete.xml",
-	        type: 'PUT',
-	        processData: false,
-	        complete: function(response){
-	            if (response.status == 200)
-	                $("#item" + id).addClass("completed").find("span").remove();
-	        }
-	    });
-	    $.ajax(opts);
-	},
 	getTodoOptions : function(param){
-		var html = ""
-		$(app.projects).each(function(){
-			if (this.id == param) {
-				html += "<option value=''>No Todo for this time entry</option>";
-
-				// until I have "add a new todo list" working, only add if there is an existing list
-				if (this.todo_lists.length > 0)
-					html += "<option value='new'>Add a new todo item</option>";
-				$(this.todo_lists).each(function(){
-					var list = this;
-					$(list.items).each(function(){
-						html += "<option value='" + this.id + "'>" + list.name + ": " + this.name + "</option>";
-					});
+		var html = "", list_html = "", has_lists = false;
+		html += "<option value=''>No Todo for this time entry</option>";
+		$(app.todo_lists).each(function(){
+			if (this.project_id == param) {
+    		    list_html += "<optgroup label=\"" + this.name + "\">";
+                has_lists = true;
+				$(this.items).each(function(){
+					list_html += "<option value='" + this.id + "'>" + this.name + "</option>";
 				});
+				list_html += "</optgroup>";
 			}
 		});
-		return html;
+		if (has_lists) {
+			// until I have "add a new todo list" working, only add if there is an existing list
+			html += "<option value='new'>Add a new todo item</option>";
+		}
+		return html + list_html;
 	},
 	getTodos: function(){
 	    var param = $(this).val();
@@ -508,6 +382,8 @@ var app = {
 					// submit the form
 					app.statusBar.set("Adding new todo item");
 					app.tabs.block({message: null});
+					
+					// gotta figure out how to get the response header from the 201 response...
 					var options = $.extend({}, app.ajaxOptions);
 					options.processData = false;
 					options.async = false;
@@ -515,7 +391,7 @@ var app = {
 					options.type = "POST";
 					data = {content: name};
 					options.data = app.todoItemToXml(data);
-					app.new_todo_item = {name: name, todo_list_id: list_id};
+					app.new_todo_item = new TodoItem({name: name, list: list_id});
 					options.url = app.url + "/todo_lists/" + list_id + "/todo_items.xml";
 					options.complete = app.addNewTodoItem;
 					$.ajax(options);
@@ -550,15 +426,16 @@ var app = {
 		app.statusBar.clear();
 	},
 	findTodoItem : function(id){
+	    console.log('looking up unlisted todo item');
 		var opts = $.extend(app.ajaxOptions, {
 			url: app.url + "/todo_items/" + id + ".xml",
 			async:false,
 			complete: function(response){
 				if (response.status == 200){
 					var node = $(response.responseXML).find("todo-item");
-					var hash = app.parseTodoItem(node, id);
-					app.todo_items[id.toString()] = hash;
-					Cache.put("basecamp_todos", JSON.stringify(app.todo_items));
+					//var hash = app.parseTodoItem(node, id);
+					app.todo_items[id.toString()] = new TodoItem.fromXml(node);
+					//Cache.put("todo_items", JSON.stringify(app.todo_items));
 				}
 			}
 		});
@@ -566,7 +443,7 @@ var app = {
 	},
 	buildProjectDropdown : function(){
 	    var elm = $("#time_entry_project_id");
-		elm.html('');
+		elm.html('<option value="" selected="selected">Select a project</option>');
 		var companies = [], company_names = [];
 		$(app.projects).each(function(){
 			if (companies[this.company_name])
@@ -641,3 +518,4 @@ var app = {
 	    return project;
 	}
 }
+

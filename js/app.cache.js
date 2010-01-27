@@ -19,6 +19,5 @@ var Cache = {
 	
 	reset: function() {
 		air.EncryptedLocalStore.reset();	
-	}
-					 
+	}					 
 };

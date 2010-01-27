@@ -1,23 +1,29 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <title>TimeCard - Timesheets in BaseCamp made easy</title>
+	<title>TimeCard - Timesheets in BaseCamp made easy</title>
 	<script type="text/javascript" src="js/AIRAliases.js"></script>
+	<script src="js/applicationupdater_ui.swf" type="application/x-shockwave-flash"></script>
 	<script type="text/javascript" src="js/MenuBuilder.js"></script>
-	<!--<script type="text/javascript" src="js/AIRIntrospector.js"></script>-->
+    <!--<script type="text/javascript" src="js/AIRIntrospector.js"></script>-->
 
-  <script src="js/json2.js" type="text/javascript"></script>
-  <script src="js/jquery-1.3.2.min.js" type="text/javascript"></script>
-  <script src="js/date_extension.js" type="text/javascript"></script>
-  <script src="js/Class-0.0.2.min.js" type="text/javascript"></script>
-  <script src="js/jquery.blockUI.js" type="text/javascript"></script>
-  <script src="js/jquery.countdown.js" type="text/javascript"></script>
-  <script src="js/jquery-ui-1.7.2.custom.js" type="text/javascript"></script>
+	<script src="js/json2.js" type="text/javascript"></script>
+	<script src="js/base64.js" type="text/javascript"></script>
+	<script src="js/jquery-1.3.2.min.js" type="text/javascript"></script>
+	<script src="js/date_extension.js" type="text/javascript"></script>
+	<script src="js/Class-0.0.2.min.js" type="text/javascript"></script>
+	<script src="js/jquery.blockUI.js" type="text/javascript"></script>
+	<script src="js/jquery.countdown.js" type="text/javascript"></script>
+	<script src="js/jquery-ui-1.7.2.custom.js" type="text/javascript"></script>
 
-  <script src="js/application.js" type="text/javascript"></script>
-  <script src="js/app.cache.js" type="text/javascript"></script>
-  <script src="js/app.date.js" type="text/javascript"></script>
-  <script src="js/app.timelog.js" type="text/javascript"></script>
+	<script src="js/Connection.js" type="text/javascript"></script>
+	<script src="js/application.js" type="text/javascript"></script>
+	<script src="js/app.cache.js" type="text/javascript"></script>
+	<script src="js/app.date.js" type="text/javascript"></script>
+	<script src="js/app.timelog.js" type="text/javascript"></script>
+	<script src="js/app.project.js" type="text/javascript"></script>
+	<script src="js/app.todo_list.js" type="text/javascript"></script>
+	<script src="js/app.todo_item.js" type="text/javascript"></script>
   
 
   <link href="resources/styles.css" media="screen" rel="stylesheet" type="text/css" />
@@ -25,16 +31,10 @@
   </head>
   <body>
     
-<div id="dashboard">
-  <p id="identity">
-    <strong><span class="name"></span>'s hours</strong> for week of <span class="start"></span> to <span class="end"></span>
-  </p>
-  
-  <p id="status_bar_elm"></p>
-</div>
+<div id="app_top">
 <div id="header">
 	<div class="loadindicator"></div>
-  <h1>TimeCard<span class="version">1.055</span></h1>
+  <h1>TimeCard</h1>
   <div id="task_timer">
     <div id="timer_buttons">
       <button id="timer">Start Task</button>
@@ -43,9 +43,18 @@
     <button id="pause_timer" style="display:none">Pause</button>
   </div>
   <div id="summary"><span class="total_hours"></span> hours</div>
+<div class="clear"></div>
+</div>
+<div id="dashboard">
+  <p id="identity">
+    <strong><span class="name"></span>'s hours</strong> for week of <span class="start"></span> to <span class="end"></span>  </p>
+              
+  <p id="status_bar_elm"></p>
+	<div class="clear"></div>
 </div>
 <div class="clear"></div>
-
+</div>
+<div class="clear"></div>
 <div id="tabs">
     <div id="todo_lists" class="tab">
       <h2><a href="#" onclick="$('#todo_list_content').toggle();return false;">Todo Lists</a></h2>
@@ -53,16 +62,17 @@
       <div id="todo_list_content"></div>
     </div>
     <div id="timelog" class="tab">
+    
       <div id="add_time">
         <form method="post">
           <table cellspacing="0">
             <tbody>
               <tr>
-                <th>Date</th>
-                <th>Project</th>
-                <th>Description</th>
-                <th>Hours</th>
-                <th>Actions</th>
+                <th class="date">Date</th>
+                <th class="project">Project</th>
+                <th class="description">Description</th>
+                <th class="hours">Hours</th>
+                <th class="actions">Actions</th>
               </tr>
               <tr id="new_time_entry_form">
                 <td class="date"><input type="text" name="time_entry[date]" id="time_entry_date" class="datepicker" / ></td>
@@ -86,8 +96,9 @@
           </table>
         </form>
       </div>
-    
+	      <div id="timesheet_wrapper">
           <table id="timesheet" class="timesheet" cellspacing="0"></table>
+          </div>
       </div>
     
       <div id="prefs" class="tab">
