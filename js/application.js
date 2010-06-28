@@ -84,7 +84,7 @@ var app = {
     	$('#add_time form').submit(function(){return app.timelog.create();});
     	//$('#timesheet_form').submit(function(){return app.timelog.submitEdit(); });
     	$('.total_hours:first').html($('.total_hours:last').html());
-    	$('input.datepicker').datepicker();
+    	$('#add_time input.datepicker').datepicker();
     	$('#prefs_submit').bind("click", app.establishConnection);
 		$('#reload_link').bind("click", function(){app.reload(); return false;});
 		$('#refresh_link').bind("click", function(){app.refreshTime(); return false;});
@@ -162,6 +162,9 @@ var app = {
                 password = $('#prefs_password').val(),
                 remember = $('#prefs_remember_me:checked').size() > 0;
 			url = url.replace(/\/$/,''); // remove trailing slash from url
+			if (!url.match(/^http/)) {
+				url = "https://" + url;
+			}
 			if (url && user && password) {
                 found = true;
                 if (remember){
@@ -177,6 +180,9 @@ var app = {
         // otherwise show the prefs tab - whose submit runs this function
         if (found){
 
+			if (!url.match(/^http/)) {
+				url = "https://" + url;
+			}
 			app.url = url;
 			app.username = user;
 			app.password = password;
@@ -410,7 +416,7 @@ var app = {
 	        app.new_todo_item.id = id;
 			// add the new todo to the project
 			for(var i=0;i<project.todo_lists.length;i++){
-				if (project.todo_lists[i].id == app.new_todo_item.todo_list_id){
+				if (project.todo_lists[i].id == app.new_todo_item.list){
 					project.todo_lists[i].items.push(app.new_todo_item);	
 					list = project.todo_lists[i];
 				}
@@ -418,7 +424,6 @@ var app = {
 			// add it to the todo_items hash
 			app.todo_items[id] = app.new_todo_item;
 			// add it to the dropdown, select it, show the dropdown
-			
 			select.append('<option value="' + id + '">' + list.name + ": " + app.new_todo_item.name + '</option>').val(id).show();
 			$('#new_todo_form').remove();
 		}

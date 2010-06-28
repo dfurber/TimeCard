@@ -18,19 +18,19 @@ var TimeLog = Class.create({
 		if (this.dateSubtrator < 0)
 			this.dateSubtrator = 0;
 		this.setDateRange();
-		$('#time_entry_date').val(this.startDate.format('m/d/Y'));
+		$('#new_time_entry_form td.date a').val(this.startDate.format('m/d/Y'));
 		this.load();
 	},
 	jumpBack: function(){
 		this.dateSubtractor -= 1;
 		this.setDateRange();
-		$('#time_entry_date').val(this.startDate.format('m/d/Y'));
+		$('#new_time_entry_form td.date a').val(this.startDate.format('m/d/Y'));
 		this.load();
 	},
 	showThisWeek: function(){
 		this.dateSubtractor = 0;
 		this.setDateRange();
-		$('#time_entry_date').val(new Date().format('m/d/Y'));
+		$('#new_time_entry_form td.date a').val(new Date().format('m/d/Y'));
 		this.load();
 	},
 	sort: function(a,b){
@@ -104,7 +104,7 @@ var TimeLog = Class.create({
 			hours.addClass("error");
 			errors = true;
 		} else {
-			var date_orig = $('#time_entry_date').val()
+			var date_orig = $('#new_time_entry_form td.date input').val()
 		}
 		if (!project.val()) {
 			project.addClass("error");
@@ -158,9 +158,14 @@ var TimeLog = Class.create({
 		return false;
 	},
 	calculateTotalHours : function(){
-		var hours = 0;
-		$('#timesheet td.hours').each(function(){
-			hours += parseFloat($(this).html());
+		var hours = 0, summarySpan = $('#daily_hours');
+		$('#daily_hours dd').html('0');
+		$('#timesheet tr').each(function(){
+			var entry_hours = parseFloat($(this).find('td.hours').html()),
+				entry_date = (new Date($(this).find('span.date').html())).getDay(),
+				dd = $('#day_' + entry_date);
+			hours += parseFloat(entry_hours);
+			dd.html(entry_hours + parseFloat(dd.html()));
 		});
 		$('.total_hours').html(hours);
 		$('#summary').show();
@@ -277,7 +282,7 @@ TimeEntry = Class.create({
 		this.dom.hide().before(this.form);
 		this.form.find('input.datepicker').datepicker();
 		this.form.find('select.todos').bind("change", app.checkForNewTodo);
-		$('select.todos:value[new]').val('').show();
+		$('select.todos[value=new]').val('').show();
 		$('#new_todo_form').remove();
 		return false;
 	},

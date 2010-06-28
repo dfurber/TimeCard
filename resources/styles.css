@@ -34,6 +34,9 @@ body {
   display:none;
   margin:0;
 }
+#dashboard #identity a {
+  text-decoration:none;
+}
 
 #dashboard #status_bar_elm {
   float:right;
@@ -125,10 +128,24 @@ h1 span.version {
     font-weight:bold;
     font-size:16px;
 	padding-left:6px;
+	padding-right:2px;
 }
 
 #summary div {
-    padding:10px;
+    padding:0 10px;
+	display:inline-block;
+}
+
+#summary dl, #summary dt, #summary dd {
+display:inline;
+}
+#summary dt {
+margin:0;
+}
+#summary dd {
+font-size:16px;
+font-weight:bold;
+margin:0 2px 0;padding:0;
 }
 
 /*#add_time {

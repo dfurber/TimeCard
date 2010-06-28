@@ -679,12 +679,15 @@ $.extend(Datepicker.prototype, {
 			drawMonth: 0, drawYear: 0, // month being drawn
 			inline: inline, // is datepicker inline or not
 			dpDiv: (!inline ? this.dpDiv : // presentation div
-			$('<div class="' + this._inlineClass + ' ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all"></div>')).attr("data-input", id).bind("click", this._dispatchClick)};
+			$('<div class="' + this._inlineClass + ' ui-datepicker ui-widget ui-widget-content ui-helper-clearfix ui-corner-all"></div>')).attr("data-input", id).bind("click", this._dispatchClick)
+		};
 	},
 	
 	_dispatchClick : function(event){
 		var el = $(event.target);
+		// This line is causing it to get the last instantiated datepicker field rather than the desired one.
 		var id = '#' + $('#ui-datepicker-div').attr('data-input');
+		// var id = '#' + el.attr("id");
 		if (el.parents("a.ui-datepicker-prev").size() > 0) {
 			DP_jQuery.datepicker._adjustDate(id, -1, 'M');
 			return false;
@@ -1065,6 +1068,7 @@ $.extend(Datepicker.prototype, {
 		$.datepicker._hideDatepicker(null, '');
 		$.datepicker._lastInput = input;
 		$.datepicker._setDateFromField(inst);
+		$('#ui-datepicker-div').attr('data-input', $(input).attr('id'));
 		if ($.datepicker._inDialog) // hide cursor
 			input.value = '';
 		if (!$.datepicker._pos) { // position below input

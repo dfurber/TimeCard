@@ -6,7 +6,7 @@
   <customUpdateUI>false</customUpdateUI>
   <name>TimeCard</name>
   <id>name.davidfurber.timecard</id>
-  <version>1.17</version>
+  <version>1.18</version>
   <initialWindow>
     <content>index.html</content>
     <height>600</height>
