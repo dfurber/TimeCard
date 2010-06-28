@@ -13,7 +13,7 @@ body {
 	margin-bottom:10px;
 }
 
-#dashboard {
+#dashboard, #footer {
 	display: block;
 	position: relative;
 	text-align:right;
@@ -27,6 +27,19 @@ body {
 	padding:4px 10px 0;
 	margin:0 -10px;
 	clear:both;
+}
+
+#footer {
+position:fixed;
+bottom:0;
+left:0;
+width:140px;
+-webkit-border-top-right-radius:10px;
+text-align:center;
+}
+#footer a {
+	text-decoration:none;
+	font-weight:bold;
 }
 
 #dashboard #identity {
@@ -145,7 +158,7 @@ margin:0;
 #summary dd {
 font-size:16px;
 font-weight:bold;
-margin:0 2px 0;padding:0;
+margin:0 5px 0;padding:0;
 }
 
 /*#add_time {

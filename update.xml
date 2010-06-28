@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <update xmlns="http://ns.adobe.com/air/framework/update/description/1.0">
   <version>1.18</version>
-  <url>http://davidfurber.name/air/TimeCard.air</url>
+  <url>https://github.com/dfurber/TimeCard/raw/master/updaterConfig.xml</url>
   <description><![CDATA[Ability to edit time entries and move entries from one todo to another.]]></description>
 </update>
